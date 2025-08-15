@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/nntaoli-project/goex/v2/httpcli"
@@ -47,7 +48,7 @@ func (prv *Prv) CreateOrder(pair model.CurrencyPair, qty, price float64, side mo
 	if posSide != "" {
 		params.Set("posSide", posSide)
 	}
-
+	
 	util.MergeOptionParams(&params, opts...)
 	AdaptOrderClientIDOptionParameter(&params)
 
@@ -234,8 +235,33 @@ func (prv *Prv) DoAuthRequest(httpMethod, reqUrl string, params *url.Values, hea
 
 	if http.MethodPost == httpMethod {
 		params.Set("tag", "86d4a3bf87bcBCDE")
-		reqBody, _ := util.ValuesToJson(*params)
-		reqBodyStr = string(reqBody)
+
+		// 检查是否有 attachAlgoOrds
+		attachVal := params.Get("attachAlgoOrds")
+		if attachVal != "" {
+			// 转成 JSON 数组
+			var attachArr []attachAlgoOrd
+			if err := json.Unmarshal([]byte(attachVal), &attachArr); err != nil {
+				return nil, nil, fmt.Errorf("invalid attachAlgoOrds json: %w", err)
+			}
+
+			// 先把原有 params 复制到 map[string]interface{}
+			jsonMap := make(map[string]interface{})
+			for k, v := range *params {
+				if k == "attachAlgoOrds" {
+					continue
+				}
+				jsonMap[k] = v[0]
+			}
+			jsonMap["attachAlgoOrds"] = attachArr
+
+			bodyBytes, _ := json.Marshal(jsonMap)
+			reqBodyStr = string(bodyBytes)
+		} else {
+			// 原有逻辑
+			reqBody, _ := util.ValuesToJson(*params)
+			reqBodyStr = string(reqBody)
+		}
 	}
 
 	_url, _ := url.Parse(reqUrl)
@@ -285,4 +311,11 @@ func NewPrvApi(opts ...options.ApiOption) *Prv {
 		opt(&api.apiOpts)
 	}
 	return api
+}
+
+type attachAlgoOrd struct {
+	TpTriggerPx string `json:"tpTriggerPx"`
+	TpOrdPx     string `json:"tpOrdPx"`
+	SlTriggerPx string `json:"slTriggerPx"`
+	SlOrdPx     string `json:"slOrdPx"`
 }
