@@ -109,7 +109,8 @@ type Kline struct {
 	Close     float64      `json:"s"`
 	High      float64      `json:"h"`
 	Low       float64      `json:"l"`
-	Vol       float64      `json:"v"`
+	Vol       float64      `json:"v"`  // 成交量，以币为单位
+	VolCcy    float64      `json:"vc"` // 成交额，以USDT为单位
 }
 
 type Order struct {
